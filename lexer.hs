@@ -1,32 +1,68 @@
 module Lexer(tokenize)
   where
 import Data.Char
+import qualified Data.Map as Map
 
 data Token = TokSlash
            | TokDoubleSlash
            | TokStar
            | TokPlus
            | TokMinus
-           | TokSemicolon
+           | TokSemicolon        -- ;
+           | TokComma            -- ,
            | TokIdent String
            | TokNum Double
            | TokSpace
-           | TokEq     -- =
-           | TokLParen     -- (
-           | TokRParen     -- )
-           | TokLBrace     -- {
-           | TokRBrace     -- }
-           | TokEqEq         -- ==
-           | TokBang       -- !
-           | TokBangEq        -- !=
-           | TokLThan      -- <
-           | TokGThan      -- >
-           | TokLThanEq -- <=
-           | TokGThanEq -- >=
-           | TokDot        -- .
+           | TokEqual            -- =
+           | TokLParen           -- (
+           | TokRParen           -- )
+           | TokLBrace           -- {
+           | TokRBrace           -- }
+           | TokDoubleEqual      -- ==
+           | TokBang             -- !
+           | TokBangEqual        -- !=
+           | TokLess             -- <
+           | TokGreater          -- >
+           | TokLessEqual        -- <=
+           | TokGreaterEqual     -- >=
+           | TokDot              -- .
+           | TokAnd
+           | TokClass
+           | TokElse
+           | TokFalse
+           | TokFor
+           | TokFun
+           | TokIf
+           | TokNil
+           | TokOr
+           | TokPrint
+           | TokReturn
+           | TokSuper
+           | TokThis
+           | TokTrue
            | TokVar
+           | TokWhile
            | TokEnd
     deriving (Show, Eq)
+
+reservedWords :: Map.Map String Token
+reservedWords = Map.fromList [ ("and", TokAnd)
+                             , ("class", TokClass)
+                             , ("else", TokElse)
+                             , ("false", TokFalse)
+                             , ("for", TokFor)
+                             , ("fun", TokFun)
+                             , ("if", TokIf)
+                             , ("nil", TokNil)
+                             , ("or", TokOr)
+                             , ("print", TokPrint)
+                             , ("return", TokReturn)
+                             , ("super", TokSuper)
+                             , ("this", TokThis)
+                             , ("true", TokTrue)
+                             , ("var", TokVar)
+                             , ("while", TokWhile)
+                             ]
 
 tokenize :: String -> [Token]
 tokenize [] = []
@@ -38,12 +74,12 @@ tokenize (c:cs)
   | c == ')' = TokRParen : tokenize cs
   | c == '{' = TokLBrace : tokenize cs
   | c == '}' = TokRBrace : tokenize cs
-  | c == '=' = doubleToken '=' TokEq TokEqEq cs
-  | c == '!' = doubleToken '=' TokBang TokBangEq cs
+  | c == '=' = doubleToken '=' TokEqual TokDoubleEqual cs
+  | c == '!' = doubleToken '=' TokBang TokBangEqual cs
   | isDigit c = number c cs
   | c == '.' = TokDot : tokenize cs
-  | c == '>' = doubleToken '=' TokGThan TokGThanEq cs
-  | c == '<' = doubleToken '=' TokLThan TokLThanEq cs
+  | c == '>' = doubleToken '=' TokGreater TokGreaterEqual cs
+  | c == '<' = doubleToken '=' TokLess TokLessEqual cs
   | c == '/' = slash cs
   | isAlpha c = identifier c cs
   | isSpace c = tokenize cs
@@ -57,7 +93,9 @@ doubleToken c' singleToken doubleToken (c:cs) = if c == c'
                                         else singleToken : tokenize (c:cs)
 
 identifier c cs = let (str, cs') = span isAlphaNum cs in
-                    TokIdent (c:str) : tokenize cs'
+                    case Map.lookup (c:str) reservedWords of
+                      (Just tok) -> tok : tokenize cs'
+                      Nothing  -> TokIdent (c:str) : tokenize cs'
 
 number c cs =
   let (digs, cs') = span isNumberPart cs in

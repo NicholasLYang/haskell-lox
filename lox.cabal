@@ -57,7 +57,7 @@ executable lox
   -- other-extensions:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.10 && <4.11
+  build-depends:       containers, base >=4.10 && <4.11
   
   -- Directories containing source files.
   -- hs-source-dirs:      
