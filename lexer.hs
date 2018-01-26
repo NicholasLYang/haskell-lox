@@ -36,6 +36,7 @@ tokenize (c:cs)
   | c == '}' = TokRBrace : tokenize cs
   | c == '=' = doubleToken '=' TokEqual TokDoubleEqual cs
   | c == '!' = doubleToken '=' TokBang TokBangEqual cs
+  | c == '"' = string cs
   | isDigit c = number c cs
   | c == '.' = TokDot : tokenize cs
   | c == '>' = doubleToken '=' TokGreater TokGreaterEqual cs
@@ -69,6 +70,12 @@ slash [] = []
 slash (c:cs) = if c == '/'
                then tokenize $ lineComment cs
                else TokSlash : tokenize cs
+
+string :: String -> [Token]
+string [] = error $ "Uncompleted string "
+string cs =
+  let (str, cs') = span (/= '"') cs in
+    TokString str : tokenize cs'
 
 lineComment :: String -> String
 lineComment [] = []

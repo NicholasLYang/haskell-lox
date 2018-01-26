@@ -10,6 +10,7 @@ data Token = TokSlash
            | TokComma            -- ,
            | TokIdent String
            | TokNum Double
+           | TokString String
            | TokSpace
            | TokEqual            -- =
            | TokLParen           -- (
