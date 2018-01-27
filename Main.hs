@@ -6,4 +6,5 @@ main :: IO ()
 main = do
   line <- getLine
   print $ tokenize line
+  print $ parse $ tokenize line
 

@@ -1,8 +1,13 @@
 module Parser
   where
 import Tokens
+import Debug.Trace
 
-data Object = Double | String | Bool deriving Show
+
+data Object = Number Double |
+              String String |
+              Null |
+              Boolean Bool deriving Show
 data Expr = Binary Expr Token Expr
               | Grouping Expr
               | Literal Object
@@ -14,13 +19,12 @@ lookAhead [] = TokEnd
 lookAhead (c:cs) = c
 
 accept :: [Token] -> [Token]
-accept [] = error "Nothing to accept"
-accept (t:ts) = ts
+accept = tail
 
 parse :: [Token] -> Expr
 parse toks = let (expr, toks') = expression toks
              in
-               if null toks'
+               if (head toks') == TokEnd
                then expr
                else error $ "Leftover tokens: " ++ show toks'
                
@@ -70,17 +74,23 @@ unary :: [Token] -> (Expr, [Token])
 unary toks = let nextTok = lookAhead toks
              in
                if elem nextTok [TokBang, TokMinus]
-               then UnaryNode nextTok (unary $ accept toks)
+               then let (expr, toks') = (unary $ accept toks)
+                    in (Unary nextTok expr, toks')
                else primary toks
 
 primary :: [Token] -> (Expr, [Token])
 primary (t:ts) =
   case t of
-    TokFalse   -> (Literal False, ts)
-    TokTrue    -> (Literal True, ts)
-    TokNil     -> (Literal Nothing, ts)
-    (TokNum n) -> (Literal n, ts)
-
+    TokFalse   -> (Literal (Boolean False), ts)
+    TokTrue    -> (Literal (Boolean True), ts)
+    TokNil     -> (Literal Null, ts)
+    (TokNum n) -> (Literal (Number n), ts)
+    TokLParen  -> let (expr, toks) = expression ts
+                  in
+                    if (lookAhead toks) == TokRParen
+                    then (Grouping expr, (accept toks))
+                    else error $ "Expect ')' after expression"
+    _          -> error $ "Invalid token: " ++ show t
 -- If the next token is in the operatorToks then
 -- parse the next tokens with nextFunc, bundle it
 -- up in an Expr then call itself with the leftExpr
@@ -92,11 +102,11 @@ accumulateExpr :: [Token] -> ([Token] -> (Expr, [Token]))
 accumulateExpr operatorToks nextFunc nextTok leftExpr toks =
   if elem nextTok operatorToks
   then
-    let (rightExpr, toks') = nextFunc toks
+    let (rightExpr, toks') = trace (show toks ++ " " ++ show nextTok) (nextFunc toks)
     in accumulateExpr
        operatorToks
        nextFunc
        (lookAhead toks')
        (Binary leftExpr nextTok rightExpr)
        (accept toks')
-  else (leftExpr, toks)
+  else (leftExpr, (nextTok:toks))

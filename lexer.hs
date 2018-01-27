@@ -28,6 +28,8 @@ tokenize :: String -> [Token]
 tokenize [] = []
 tokenize (c:cs)
   | c == '*' = TokStar : tokenize cs
+  | c == '+' = TokPlus : tokenize cs
+  | c == '-' = TokMinus : tokenize cs
   | c == ';' = TokSemicolon : tokenize cs
   | c == '-' = TokMinus : tokenize cs
   | c == '(' = TokLParen : tokenize cs
