@@ -2,9 +2,10 @@ module Parser
   where
 import Tokens
 
-data Expr = BinaryNode Expr Token Expr
+data Object = Double | String | Bool deriving Show
+data Expr = Binary Expr Token Expr
               | Grouping Expr
-              | Literal
+              | Literal Object
               | Unary Token Expr
            deriving Show
 
@@ -77,13 +78,13 @@ primary (t:ts) =
   case t of
     TokFalse   -> (Literal False, ts)
     TokTrue    -> (Literal True, ts)
-    TokNil     -> (Literal Null, ts)
+    TokNil     -> (Literal Nothing, ts)
     (TokNum n) -> (Literal n, ts)
 
 -- If the next token is in the operatorToks then
 -- parse the next tokens with nextFunc, bundle it
 -- up in an Expr then call itself with the leftExpr
--- being a new BinaryNode. Otherwise, just return
+-- being a new Binary. Otherwise, just return
 -- the leftExpr
 accumulateExpr :: [Token] -> ([Token] -> (Expr, [Token]))
                -> Token -> Expr -> [Token]
@@ -96,6 +97,6 @@ accumulateExpr operatorToks nextFunc nextTok leftExpr toks =
        operatorToks
        nextFunc
        (lookAhead toks')
-       (BinaryNode leftExpr nextTok rightExpr)
+       (Binary leftExpr nextTok rightExpr)
        (accept toks')
   else (leftExpr, toks)
