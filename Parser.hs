@@ -1,13 +1,21 @@
 module Parser
   where
 import Tokens
+import Data.Maybe
 import Debug.Trace
 
 
-data Object = Number Double |
-              String String |
-              Null |
-              Boolean Bool deriving Show
+data Object = Number Double
+              | String String
+              | Null
+              | Boolean Bool
+            deriving Show
+
+data Stmt = Expression Expr
+              | Print Expr
+              | Variable Token (Maybe Expr)
+            deriving Show
+
 data Expr = Binary Expr Token Expr
               | Grouping Expr
               | Literal Object
@@ -21,13 +29,48 @@ lookAhead (c:cs) = c
 accept :: [Token] -> [Token]
 accept = tail
 
-parse :: [Token] -> Expr
-parse toks = let (expr, toks') = expression toks
+parse :: [Token] -> [Stmt]
+parse toks = let (stmt, toks') = declaration toks
              in
-               if (head toks') == TokEnd
-               then expr
-               else error $ "Leftover tokens: " ++ show toks'
-               
+               if (lookAhead toks') == TokEnd
+               then [stmt]
+               else stmt : parse toks'
+
+declaration :: [Token] -> (Stmt, [Token])
+declaration (t:ts) = if t == TokVar
+                     then varDeclaration ts
+                     else statement (t:ts)
+
+varDeclaration (t:ts) = case t of
+                          (TokIdent name) ->
+                            if (lookAhead ts) == TokEqual
+                            then finishVarDeclaration ts
+                            else (Variable t Nothing, ts)
+                          _ -> error $ "Expect variable name."
+
+finishVarDeclaration :: [Token] -> (Stmt, [Token])
+finishVarDeclaration (t:ts) = let (expr, toks) = expression ts
+                              in if (lookAhead toks) == TokSemicolon
+                                 then (Variable t (Just expr), (accept toks))
+                                 else error $ "Expect ';' after variable declaration"
+
+
+statement :: [Token] -> (Stmt, [Token])
+statement (t:ts) =
+  if t == TokPrint
+  then printStatement ts
+  else expressionStatement (t:ts)
+
+printStatement toks = let (expr, toks') = expression toks
+                        in if (lookAhead toks') == TokSemicolon
+                           then (Print expr, (accept toks'))
+                           else error $ "Expect semicolon: " ++ show (lookAhead toks)
+
+expressionStatement toks = let (expr, toks') = expression toks
+                      in if (lookAhead toks') == TokSemicolon
+                         then (Expression expr, (accept toks'))
+                         else error $ "Expect semicolon: " ++ show (lookAhead toks')
+
 expression :: [Token] -> (Expr, [Token])
 expression = equality
 
@@ -91,6 +134,7 @@ primary (t:ts) =
                     then (Grouping expr, (accept toks))
                     else error $ "Expect ')' after expression"
     _          -> error $ "Invalid token: " ++ show t
+
 -- If the next token is in the operatorToks then
 -- parse the next tokens with nextFunc, bundle it
 -- up in an Expr then call itself with the leftExpr
